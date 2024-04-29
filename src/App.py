@@ -1,16 +1,14 @@
-import os
 import pandas as pd
 import pyautogui as pag
 
+#from dataframes import funcionarioDF as fdf, municipioAPI as munapi, municipioDF as mundf
+
+from dataframes.funcionarioDF import *
+from dataframes import  municipioAPI as munapi, municipioDF as mundf
+from model.Municipio import *
 # == == == Variaveis
 #posicoes = [(100,300),(1970,343)] # x , y 
 #caminho arquivos
-
-func_excel_path= "../data/func.xlsx"
-func_situacao_df_excel_path= "../data/func_log.xlsx"
-
-#== Situação Vetor
-situacao_lista = ["NAO CADASTRADO","CADASTRANDO","CADASTRADO"]
 
 #== == parte da automação com os cursores 
 x_cursor,y_cursor=0,0
@@ -40,15 +38,32 @@ def continuar_programa()->bool:
         
     return resposta=="S"
 
+def get_municipio(municipio_nome:str, municipio_uf:str)->Municipio:
+    r''':Função responsável por procurar pelo :class:`Municipio` do funcionario.
+        :Primeiro irá procurar no `municipios_df`,
+        :Caso não encontre, ele irá requisitar a API,
+        :Se não for possível encontrar, lançará :class:`MunicipioException` 
+    '''
+    
+    municipio= None
+    try:
+        municipio = mundf.get_municipio_codigo(municipio_nome,municipio_uf)
+    
+    except MunicipioException as ME:
+        #Se não encontrou localmente, requiste a API
+        municipio = munapi.get_municipio_codigo(municipio_nome,municipio_uf)
+        #Caso tenha achado, salve no DataFrame Local
+        mundf.add_municipio(municipio)   
+        #Se não achou, não há o que fazer, lance um exceção
+        mundf.save_df()
+    return municipio
+
 #input("pressione 'Enter' para continuar ou ( CTRL + C ) para encerrar.")
 
 # == == == Variaveis
 #posicoes = [(100,300),(1970,343)] # x , y 
 
 #caminho arquivos
-
-#== Situação Vetor
-situacao_lista = ["NAO CADASTRADO","CADASTRANDO","CADASTRADO"]
 
 #== == parte da automação com os cursores 
 x_cursor,y_cursor=0,0
@@ -62,48 +77,24 @@ largura_coluna,altura_coluna = 65, 20
 #limite da pagina
 x_limite, y_limite= 3490, 906
 
-#== == Coletando os dados 
-# Carregando o arquivo Excel
-func_data = pd.read_excel(func_excel_path,dtype=str)
-
-# Formatando os dados
-func_data = func_data.fillna("")
-
-# Buscando uma tabela para analisar se funcionario já foi cadastrado 
-func_situacao_df = None
-
-if os.path.exists(func_situacao_df_excel_path):
-    # Carregue os cabeçalhos da planilha existente
-    func_situacao_df = pd.read_excel(func_situacao_df_excel_path,dtype=str)
-    func_situacao_df = func_situacao_df.fillna("")
-
-    # Use os cabeçalhos da planilha existente para criar uma nova planilha
-else: 
-    #CASO Não exista, criamos um Dataframe novo, com os dados dos funcionário. No final adicionamos a coluna SITUACAO
-    func_situacao_df = func_data.copy()
-    #Adicionamos a coluna SITUACAO no final da tabela 
-    func_situacao_df["SITUACAO"] = situacao_lista[0]
-    #Criamos a planilha na pasta data
-    func_situacao_df.to_excel(func_situacao_df_excel_path,index=False)
-
 #iteirando sobre o dataframe e com automação
-for index, row in func_data.iterrows():
+for index, row in func_data_df.iterrows():
     #mova o cursor para o inicio da proxima linha,    
     y_cursor += altura_coluna 
     
     situacao_check= func_situacao_df.loc[func_situacao_df["MATRICULA"]==row["MATRICULA"],"SITUACAO"]
-        
+     
+    #Checamos se o funcionário já não havia sido cadastrado   
     if  situacao_check.iloc[0] != situacao_lista[0] and situacao_check.iloc[0] != "":
         print(f"{row['NOME']}, já havia sido cadastrado")
         continue
-
+    
     if(y_cursor>=y_limite):
         y_cursor = y_posicao_inicial
         pag.scroll(100)
-    #Checamos se o funcionário já não havia sido cadastrado
-    print(row)
+    
         
-    if((index + 1)%2 ==0):
+    if((index + 1)%3 ==0):
         print(f"você está cadastando a linha: {index + 1}")
         if not continuar_programa(): 
             break
@@ -111,8 +102,24 @@ for index, row in func_data.iterrows():
     #dizemos ao func_situacao_df, que o funcionario com matricula tal vai ser cadastrado
     func_situacao_df.loc[func_situacao_df["MATRICULA"] == row["MATRICULA"], "SITUACAO"] = situacao_lista[1]
     func_situacao_df.to_excel(func_situacao_df_excel_path, index=False)
-
     
+    # == == Lógica antes de inserir o Funcionario no formulario
+    
+    # pesquisamos o codigo do municipio do Funcionario
+    try:
+        municipio_encontrado = get_municipio(row["MUNICIPIO"], row["UF"])
+        func_situacao_df.loc[func_situacao_df["MATRICULA"] == row["MATRICULA"], "CODIGO_MUNICIPIO"] = municipio_encontrado.codigo
+
+        print(municipio_encontrado)
+    except MunicipioException as ME:
+        #Informamos que não encontramos este municipio
+        print(ME)
+        input("Pressione Enter para pular este funcionário... ")
+        #Atualizamos no DataFrame para informar que não encontramos o municipio
+        func_situacao_df.loc[func_situacao_df["MATRICULA"] == row["MATRICULA"], "SITUACAO"] = situacao_lista[2]
+        #Pulamos o funcionário
+        continue
+
     # Movimenta o mouse para a posição da linha desejada
     #pag.moveTo(x_cursor, y_cursor)
     # Clique para selecionar a tela

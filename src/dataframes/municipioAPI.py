@@ -11,7 +11,7 @@ base_url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios/"
 ################################################################
 
 
-def get_municipio_codigo(municipio_nome: str, uf: str) -> dict:
+def get_municipio_codigo(municipio_nome: str, municipio_uf: str) -> Municipio:
     '''
     Retorna um objeto Municipio contendo o codigo do municipio, o nome e a UF.
     Caso não encontre, lança uma Exception
@@ -35,15 +35,15 @@ def get_municipio_codigo(municipio_nome: str, uf: str) -> dict:
             
             municipio_encontrado_uf = data['microrregiao']['mesorregiao']['UF']['sigla']
             
-            if uf == municipio_encontrado_uf:
+            if municipio_uf == municipio_encontrado_uf:
                 municipio_encontrado = Municipio(data['id'], data['nome'], municipio_encontrado_uf)
 
         # Caso a resposta seja mais de um item, a API retornará uma lista:
         elif isinstance(data, list):
-            municipio_encontrado= __get_municipio_codigo_list(data, uf)
+            municipio_encontrado= __get_municipio_codigo_list(data, municipio_uf)
         
         else:
-            raise MunicipioException(f"Não foi encontrado o municipio:\n {municipio_nome} na UF {uf}")
+            raise MunicipioException(f"Não foi encontrado o municipio:\n {municipio_nome} na UF {municipio_uf}")
             
     else:
         # Se não, imprima o código d status
@@ -56,7 +56,7 @@ def get_municipio_codigo(municipio_nome: str, uf: str) -> dict:
     
     # Caso tenha feito a requisição, mas não encontrou o município pertecente a tal uf:
     else:
-        raise MunicipioException(f"Não foi possivel encontrar o municipio: {municipio_nome} da UF: {uf}")
+        raise MunicipioException(f"Não foi possivel encontrar o municipio: {municipio_nome} da UF: {municipio_uf}")
     
 
 def __get_municipio_codigo_list(municipio_lista: list[dict],uf:str)->Municipio:
