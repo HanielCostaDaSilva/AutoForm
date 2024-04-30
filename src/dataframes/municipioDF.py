@@ -4,20 +4,6 @@ from unidecode import unidecode
 from model.Municipio import Municipio, MunicipioException
 
 
-__municipios_path="./data/municipios.xlsx"
-__municipios_df= None
-
-if __name__ == "__main__":
-    __municipios_path="../data/municipios.xlsx"
-
-if os.path.exists(__municipios_path):
-    #apenas fazemos a leitura do arquivo
-    __municipios_df = pd.read_excel(__municipios_path,dtype=str)
-else:
-    __municipios_df = pd.DataFrame(columns=["NOME", "UF", "CODIGO"])
-    __municipios_df.to_excel(__municipios_path,index=False)
-
-
 def add_municipio(municipio: Municipio):
     municipio_registro = {
         "NOME": unidecode(municipio.nome),
@@ -28,18 +14,20 @@ def add_municipio(municipio: Municipio):
     
     if len(check_municipio) == 0:
         __municipios_df.loc[ len(__municipios_df) ] = municipio_registro
+    else:
+        raise MunicipioException(f"O municipio: {municipio}, já cadastrado")
     
     
 def save_df():
     #Pegamos os valores antigos 
     municipios_antigos_df = pd.read_excel(__municipios_path, dtype=str)
     #Mesclamos com o dataframe atual
-    municipios_combinados = pd.merge(__municipios_df, municipios_antigos_df, how="outer")
+    municipios_combinados = pd.concat([__municipios_df, municipios_antigos_df],ignore_index=True)
     #Depois removemos os valores repitidos, a fim de garantir apenas os valores novos
-    municipios_combinados.drop_duplicates()
+    municipios_combinados = municipios_combinados.drop_duplicates()
     #Salvamos o Dataframe no caminho antigo
-    print(municipios_combinados)
     municipios_combinados.to_excel(__municipios_path,index=False)
+    print(municipios_combinados)
 
 
 def get_municipio_codigo(municipio_nome:str,municipio_uf:str)->Municipio:
@@ -59,9 +47,21 @@ def get_municipio_codigo(municipio_nome:str,municipio_uf:str)->Municipio:
     # Cria um objeto Municipio com os valores extraídos
     municipio = Municipio(codigo, nome, uf)
     
-    print(municipio)
     return municipio
 
+
+__municipios_path="./data/municipios.xlsx"
+__municipios_df= None
+
+if __name__ == "__main__":
+    __municipios_path="../data/municipios.xlsx"
+
+if os.path.exists(__municipios_path):
+    #apenas fazemos a leitura do arquivo
+    __municipios_df = pd.read_excel(__municipios_path,dtype=str)
+else:
+    __municipios_df = pd.DataFrame(columns=["NOME", "UF", "CODIGO"])
+    __municipios_df.to_excel(__municipios_path,index=False)
     
 if __name__=="__main__":
 
@@ -74,26 +74,27 @@ if __name__=="__main__":
         
         m1=Municipio("2515302","SAPE","PB")
         add_municipio(m1)
-        save_df(__municipios_df,__municipios_path)
+        save_df()
          
-    """while True:    
+    while True:    
         municipio_nome= unidecode(str.upper(input("Nome do municipio=> ")))
         municipio_uf= str.upper(input("UF do municipio=> "))
-        municipio_codigo= ''
+        municipio_encontrado= None
         
         try:
             municipio_codigo = get_municipio_codigo(municipio_nome,municipio_uf)
     
         except MunicipioException as ME:
             print(ME)
-            municipio_codigo= input(f"\npor favor, pesquise pelo código do municipio {municipio_nome} e nos informe.\n  caso não queira, digite N =>").upper()
+            municipio_encontrado= input(f"\npor favor, pesquise pelo código do municipio {municipio_nome} e nos informe.\n  caso não queira, digite N =>").upper()
             
-            if municipio_codigo=="N": continue
-            add_municipio( Municipio(municipio_codigo, municipio_nome, municipio_uf))
+            if municipio_encontrado=="N": continue
+            add_municipio(Municipio(municipio_codigo, municipio_nome, municipio_uf))
+            save_df()
         
         except KeyboardInterrupt as KE:
             print("Programa finalizado. ")
    
         finally:
-            print(f"Municipio: {municipio_nome}  Código: {municipio_codigo}") """
+            print(f"Municipio: {municipio_encontrado}") 
             
