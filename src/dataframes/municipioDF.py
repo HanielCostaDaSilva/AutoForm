@@ -32,7 +32,7 @@ def save_df():
 
 def get_municipio_codigo(municipio_nome:str,municipio_uf:str)->Municipio:
     
-    municipio_nome = unidecode(municipio_nome)
+    municipio_nome = unidecode(municipio_nome).upper()
     
     municipio_row= __municipios_df.loc[__municipios_df["NOME"]== municipio_nome].loc[__municipios_df["UF"]== municipio_uf]
     
@@ -50,11 +50,13 @@ def get_municipio_codigo(municipio_nome:str,municipio_uf:str)->Municipio:
     return municipio
 
 
-__municipios_path="./data/municipios.xlsx"
+#Procurando
+diretorio_atual = os.path.dirname(os.path.realpath(__file__))
+
+__municipios_path = os.path.join(diretorio_atual,"..","data","municipios.xlsx")
+ 
 __municipios_df= None
 
-if __name__ == "__main__":
-    __municipios_path="../data/municipios.xlsx"
 
 if os.path.exists(__municipios_path):
     #apenas fazemos a leitura do arquivo

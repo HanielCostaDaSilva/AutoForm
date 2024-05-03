@@ -125,6 +125,10 @@ for index, row in func_data_df.iterrows():
                              row["MATRICULA"], "SITUACAO"] = situacao_lista[2]
         # Pulamos o funcionário
         continue
+    except KeyboardInterrupt:
+        mundf.save_df()
+        break;
+
 
     # acessando os valores da coluna
     """ for col in row.values:
